@@ -1,3 +1,4 @@
+#!/bin/bash
 # *****************************************
 # CONFIDENTIAL SOURCE CODE, DO NOT DISTRIBUTE!
 # IN SUBMISSION, ASPLOS 2024.
@@ -7,14 +8,14 @@
 #     Email:          hyavarzadeh@ucsd.edu
 #     Affiliation:    University of California, San Diego (UCSD)
 # *****************************************
-#!/bin/bash
 
+#echo "Starting the script"
 # Define assembler
 ass=nasm
 
 # Results directory
 RESULTS_DIR="./results"
-
+#echo "Creating directories"
 # Making required folders
 if [ ! -d "./bin" ]; then
     mkdir "./bin"
@@ -22,28 +23,34 @@ fi
 if [ ! -d "./results" ]; then
     mkdir "./results"
 fi
-
+#echo "Clearing content of Extracted_PHR.csv"
 # Clearing content of the Extracted PHR file
 > $RESULTS_DIR/Extracted_PHR.csv
 
 # Code to initialize environment variables inside test scripts
-(cd .. && . vars.sh)
+(cd .. && . ./vars.sh)
+
 
 # Performance Counters
 cts=207
+#echo "Initializing arrays"
 
 # Initialize the PHR Model and the Victim PHR Model
 for i in {0..193..1}
+#for i in $(seq 0 193)
 do
   PHR_Model[$i]=0
-  Victim_PHR_Model[$i]=$(($RANDOM%4))
+  Victim_PHR_Model[$i]=$(($RANDOM % 4))
 done
+#echo "Writing output"
 echo "${Victim_PHR_Model[@]}" > $RESULTS_DIR/Victim_PHR_Model.csv
 
 # Compile Assembly file
+#echo "Compiling Assembly file"
 $ass -g -f elf64 -o ./bin/b64.o -i../ -i./ -Dcounters=$cts -P./attack.nasm ../TemplateB64.nasm
 
 # Compile c/cpp files
+#echo "Compiling C/C++ files"
 if [ ../PMCTestA.cpp -nt ./bin/a64.o ] ; then
   g++ -g -w -O2 -c -m64 -maes ../PMCTestA.cpp -o ./bin/a64.o
 fi
@@ -58,6 +65,7 @@ fi
 # INTEL_IPP="/home/hyavarzadeh/Hosein/ipp-crypto/_build/.build/DEBUG/lib/libippcp.a"
 
 # Linking object files
+#echo "Linking object files"
 g++ -g -m64 -maes -lpthread ./bin/aesni.o ./bin/aes_core.o ./bin/a64.o ./bin/b64.o -o /tmp/x -static-libgcc -static-libstdc++ -lpthread # add "$INTEL_IPP" if you want to use Intel-IPP library
 if [ $? -ne 0 ] ; then exit ; fi
 
@@ -70,16 +78,20 @@ declare -a sum
 # ********************************************************
 # ********************* PHR Read Process *****************
 # ********************************************************
+#echo "Starting PHR Read Process"
 for phr_bit in {193..0..1}
 do
 # --------------------------------------------------------
+  #echo "Processing PHR bit: $phr_bit"
   extracted_bit=4
   while [[ $extracted_bit -eq 4 ]];
   do
+    #echo "Trying possible values for PHR bit $phr_bit"
     # ---- Trying 4 possible values of the PHR bit -------
     for i in {0..3..1}
     do
       # Set PHR bit
+      echo "Setting PHR_Model[193] to $i"
       PHR_Model[193]=$i
 
       # Running the actual test and capturing the output directly
@@ -87,7 +99,8 @@ do
 
       # Putting the results into "sum[0:3]" array
       sum[$i]=$(awk '{ sum += $1 } END { print sum }' <<< "$output")
-      # echo ${sum[$i]}
+      echo ${sum[$i]}
+      #echo "sum[$i] = ${sum[$i]}"
     done
 
     # Analyzing the results
@@ -99,12 +112,15 @@ do
     max_threshold=$(( ${sorted_array[3]} - ${sorted_array[2]} ))
     dist=$(( ${sorted_array[2]} - ${sorted_array[0]} ))
 
+    #echo "Max threshold: $max_threshold, Distance: $dist"
+
     if [ $max_threshold -gt 300 ]; then
       if [ $dist -lt 200 ]; then
         extracted_bit=$max_index
         index=$((193-$phr_bit))
         # echo -e "\e[1;34m PHR[$index] = $extracted_bit \e[0m"
         # echo -e "PHR[$index] = $extracted_bit" >> $RESULTS_DIR/Extracted_PHR.csv
+        #echo "Extracted PHR[$index] = $extracted_bit"
       fi
     fi
 

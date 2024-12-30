@@ -13,7 +13,7 @@ ass="nasm "
 
 # Is 32-bit mode supported?
 # if [ `uname -o` = Cygwin ] ; then
-if   [ `grep -c -i "no32bit" cpuinfo.txt ` -ne 0 ] ; then
+if   [ $(grep -c -i "no32bit" cpuinfo.txt) -ne 0 ] ; then
 support32bit=0
 else
 support32bit=1
